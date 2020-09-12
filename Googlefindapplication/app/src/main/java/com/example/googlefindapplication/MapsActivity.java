@@ -18,6 +18,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
@@ -49,23 +53,31 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-
-        // Add a marker in Sydney and move the camera
-        LatLng sydney = new LatLng(-34, 151);
-        baseMarker = mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
-
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(50.45466, 30.5238), 10));
         mMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
                 MarkerOptions options = new MarkerOptions();
                 options.position(latLng);
-                options.title(latLng.latitude + " " + latLng.longitude);
-                baseMarker.remove();
-                Marker marker = mMap.addMarker(options);
-                baseMarker = marker;
-                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 16));
+                List<String> address = getAddress(latLng);
+                options.title(address.get(0));
+                if(baseMarker != null)
+                    baseMarker.remove();
+                baseMarker = mMap.addMarker(options);
+                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 14));
             }
         });
+    }
+
+    private List<String> getAddress(LatLng latLng) {
+        AddressGetter addressGetter = new AddressGetter(this, latLng);
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        Future<List<String>> future = executorService.submit(addressGetter);
+        try {
+            return future.get();
+        } catch (ExecutionException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }
